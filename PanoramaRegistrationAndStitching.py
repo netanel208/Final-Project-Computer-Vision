@@ -1,10 +1,24 @@
+import sys
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+np.set_printoptions(threshold=sys.maxsize)
+
+# =========================================================================================
+# ==================================Auxiliary functions====================================
+# =========================================================================================
 
 
 def findIndexsAndValuesInImg2(pos1, pos2, pos1_4, amount: int):
+    """
+
+    :param pos1:
+    :param pos2:
+    :param pos1_4:
+    :param amount:
+    :return:
+    """
     if amount == 4:
         p1 = None
         p2 = None
@@ -48,6 +62,13 @@ def findIndexsAndValuesInImg2(pos1, pos2, pos1_4, amount: int):
 
 
 def testTheInliers(inliers, pos1: np.ndarray, pos2: np.ndarray):
+    """
+
+    :param inliers:
+    :param pos1:
+    :param pos2:
+    :return:
+    """
     t1 = []
     t2 = []
     for i in inliers:
@@ -57,13 +78,15 @@ def testTheInliers(inliers, pos1: np.ndarray, pos2: np.ndarray):
     print("test : t2 = ", np.array(t2))
 
 
-# ===================================
-# =======OpenCV match features=======
-# ===================================
+# =========================================================================================
+# =====================================Main functions======================================
+# =========================================================================================
+
+
 def matchFeatures(img1: np.ndarray, img2: np.ndarray):
     """
     Find match point between images(can include outliers).
-    Use Brute Force(BF) matching.
+    Use OpenCV Brute Force(BF) matching.
     :param img1
     :param img2
     :return: set of points coordinates in both images
@@ -99,8 +122,8 @@ def matchFeatures(img1: np.ndarray, img2: np.ndarray):
     #     plt.imshow(img2)
     #     plt.show()
 
-    # Display 200 matches
-    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches[:20], None, flags=2)
+    # Display matches
+    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches[:166], None, flags=2)
     plt.imshow(img3)
     plt.show()
 
@@ -108,6 +131,12 @@ def matchFeatures(img1: np.ndarray, img2: np.ndarray):
 
 
 def ApplyHomography(pos1: np.ndarray, H12: np.ndarray) -> np.ndarray:
+    """
+
+    :param pos1:
+    :param H12:
+    :return:
+    """
     pos2 = None
     i = 0
     for point in pos1:
@@ -133,40 +162,35 @@ def leastSquareHomograpy(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """
     M = np.zeros((2 * p1.shape[0], 9))
     i = 0
-    while i < 8:
-        M[i][0] = p1[i // 2][0]
-        M[i][1] = p1[i // 2][1]
-        M[i][2] = 1
-        M[i][6] = -1 * (p2[i // 2][0] * p1[i // 2][0])
-        M[i][7] = -1 * (p2[i // 2][0] * p1[i // 2][1])
-        M[i][8] = -1 * (p2[i // 2][0])
-        M[i + 1][3] = p1[i // 2][0]
-        M[i + 1][4] = p1[i // 2][1]
-        M[i + 1][5] = 1
-        M[i + 1][6] = -1 * (p2[i // 2][1] * p1[i // 2][0])
-        M[i + 1][7] = -1 * (p2[i // 2][1] * p1[i // 2][1])
-        M[i + 1][8] = -1 * (p2[i // 2][1])
+    while i < M.shape[0]-1:
+        M[i][0] = -p1[i // 2][0]
+        M[i][1] = -p1[i // 2][1]
+        M[i][2] = -1
+        M[i][6] = (p2[i // 2][0] * p1[i // 2][0])
+        M[i][7] = (p2[i // 2][0] * p1[i // 2][1])
+        M[i][8] = (p2[i // 2][0])
+        M[i + 1][3] = -p1[i // 2][0]
+        M[i + 1][4] = -p1[i // 2][1]
+        M[i + 1][5] = -1
+        M[i + 1][6] = (p2[i // 2][1] * p1[i // 2][0])
+        M[i + 1][7] = (p2[i // 2][1] * p1[i // 2][1])
+        M[i + 1][8] = (p2[i // 2][1])
         i += 2
-    print("M = ", M)
     U, D, V = np.linalg.svd(M)
-    print("D = ", D)
-    print("V = ", V)
-    H = V[:, V.shape[1] - 2]
-    print("H = ", H)
-    print("len(H) = ", len(H))
+    H = V[len(V)-1]
     H = H / H[len(H) - 1]
-    print("H = ", H)
     H = np.reshape(H, (3, 3))
 
-    H12, mask = cv2.findHomography(p1, p2)
-    print("opencv = ", H12)
+    # ===============Test the matrix===================
+    # H12, mask = cv2.findHomography(p1, p2, method=0)
+    # print("opencv = ", H12)
+    # print("[p1[1][0], p1[1][1], 1] = ", [p1[1][0], p1[1][1], 1])
+    # p_1 = np.dot(H, [p1[1][0], p1[1][1], 1])
+    # p_11 = np.dot(H12, [p1[1][0], p1[1][1], 1])
+    # print(p_1/p_1[2], p_11/p_11[2])
+    # =================================================
 
-    print("[p1[0][0], p1[0][1], 1] = ", [p1[0][0], p1[0][1], 1])
-    p_1 = np.dot(H, [p1[0][0], p1[0][1], 1])
-    p_11 = np.dot(H12, [p1[0][0], p1[0][1], 1])
-
-    print(p_1/p_1[2], p_11/p_11[2])
-
+    # ===========Other way to solution=================
     # x1, y1 = p1[0][0], p1[0][1]
     # x2, y2 = p1[1][0], p1[1][1]
     # x3, y3 = p1[2][0], p1[2][1]
@@ -187,14 +211,25 @@ def leastSquareHomograpy(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     #     [0, 0, 0, -x4, -y4, -1, x4 * yp4, y4 * yp4, yp4]]
     #
     # U, S, V = np.linalg.svd(A)
-    # m = min(S)
+    # # m = min(S)
     # # print("min = ", m)
     # # print("S = ", S)
     # # print("V' = ", np.dot(V, V.T))
     #
-    # H = V[:, V.shape[1] - 1]
+    # # H = V[:, V.shape[1] - 2]
+    # H = V[8]
     # H = np.reshape(H, (3, 3))
-    # # print("H = ", H)
+    # print("H = ", H)
+    #
+    # H12, mask = cv2.findHomography(p1, p2)
+    # print("opencv H12 = ", H12)
+    #
+    # print("[p1[0][0], p1[0][1], 1] = ", [p1[0][0], p1[0][1], 1])
+    # p_1 = np.dot(H, [p1[0][0], p1[0][1], 1])
+    # p_11 = np.dot(H12, [p1[0][0], p1[0][1], 1])
+    #
+    # print(p_1/p_1[2], p_11/p_11[2])
+    # ===================================================
 
     # # Test the result matrix
     # try:
@@ -224,6 +259,7 @@ def E(H12: np.ndarray, pos1_1: np.ndarray, pos1: np.ndarray, pos2: np.ndarray, i
 
     # find the corresponding point in image 2
     real_pos2_val, real_pos2_ind = findIndexsAndValuesInImg2(pos1, pos2, pos1_1, 1)
+    print("real_pos1 = ", pos1_1)
     print("pred_pos2 = ", pred_pos2)
     print("real_pos2 = ", real_pos2_val)
 
@@ -239,6 +275,14 @@ def E(H12: np.ndarray, pos1_1: np.ndarray, pos1: np.ndarray, pos2: np.ndarray, i
 
 
 def ransacHomography(pos1: np.ndarray, pos2: np.ndarray, numIter: int, inlierTol: int) -> (np.ndarray, np.ndarray):
+    """
+
+    :param pos1:
+    :param pos2:
+    :param numIter:
+    :param inlierTol:
+    :return:
+    """
     maxInliers = []
     for i in range(numIter):
         r_p1 = random.choice(pos1)
@@ -273,23 +317,25 @@ def ransacHomography(pos1: np.ndarray, pos2: np.ndarray, numIter: int, inlierTol
         t_pos2[ind][0], t_pos2[ind][1] = (pos2[i][0], pos2[i][1])
         ind += 1
     H12 = leastSquareHomograpy(t_pos1, t_pos2)
+    # H12, mask = cv2.findHomography(t_pos1, t_pos2)
 
     # return the finally homography matrix and the set of maxInliers
     return H12, maxInliers
 
 
-# ===================================
-# ===============Main================
-# ===================================
+# ============================================================================
+# =================================Main=======================================
+# ============================================================================
 img1 = cv2.imread('backyard1.jpg')
 img2 = cv2.imread('backyard2.jpg')
 img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
 img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 pos1, pos2 = matchFeatures(img1, img2)
-t_p1 = np.array([pos1[0], pos1[1], pos1[2], pos1[3]])
-t_p2 = np.array([pos2[0], pos2[1], pos2[2], pos2[3]])
-H = leastSquareHomograpy(t_p1, t_p2)
+# t_p1 = np.array([pos1[0], pos1[1], pos1[2], pos1[3], pos1[4], pos1[5], pos1[6]])
+# t_p2 = np.array([pos2[0], pos2[1], pos2[2], pos2[3], pos2[4], pos2[5], pos2[6]])
+# H = leastSquareHomograpy(t_p1, t_p2)
+# H = leastSquareHomograpy(pos1, pos2)
 # count = E(H, t_p1, pos1, pos2, 1)
 # print(count)
-# h, inliers = ransacHomography(pos1, pos2, 10, 1)
-# testTheInliers(inliers, pos1, pos2)
+h, inliers = ransacHomography(pos1, pos2, 50, 1)
+testTheInliers(inliers, pos1, pos2)  # the result in file - testRANSAC.txt
