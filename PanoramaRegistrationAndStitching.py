@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import random
 np.set_printoptions(threshold=sys.maxsize)
 
+
 # =========================================================================================
 # ==================================Auxiliary functions====================================
 # =========================================================================================
@@ -336,15 +337,23 @@ def displayMatches(im1: np.ndarray, im2: np.ndarray, pos1: np.ndarray, pos2: np.
     fig = plt.figure()
     x_shift = im1.shape[1]
 
+    # ================Other way to solution=================
+    # # Mark all key points in red points
+    # for i in inlind:
+    #     x1, y1 = pos1[i][0], pos1[i][1]
+    #     x2, y2 = pos2[i][0]+x_shift, pos2[i][1]
+    #     plt.plot(x1, y1, '.y')
+    #     plt.plot(x2, y2, '.y')
+    #     plt.plot([x1, x2], [y1, y2], 'ro-')
+    # plt.imshow(numpy_horizontal, cmap='Greys')
+    # plt.show()
+    # ======================================================
+
     # Mark all key points in red points
-    for i in inlind:
-        x1, y1 = pos1[i][0], pos1[i][1]
-        x2, y2 = pos2[i][0]+x_shift, pos2[i][1]
-        plt.plot(x1, y1, '.y')
-        plt.plot(x2, y2, '.y')
-        # plt.plot([x1, x2], [y1, y2], 'ro-')
-    plt.imshow(numpy_horizontal, cmap='Greys')
-    plt.show()
+
+
+
+
 
 
 # ============================================================================
@@ -361,6 +370,6 @@ pos1, pos2 = matchFeatures(img1, img2)
 # H = leastSquareHomograpy(pos1, pos2)
 # count = E(H, t_p1, pos1, pos2, 1)
 # print(count)
-h, inliers = ransacHomography(pos1, pos2, 50, 1)
+h, inliers = ransacHomography(pos1, pos2, 150, 1)
 testTheInliers(h, inliers, pos1, pos2)  # the result in file - testRANSAC.txt
-# displayMatches(img1, img2, pos1, pos2, inliers)
+displayMatches(img1, img2, pos1, pos2, inliers)
