@@ -12,11 +12,12 @@ np.set_printoptions(threshold=sys.maxsize)
 
 def findIndexsAndValuesInImg2(pos1, pos2, pos1_4, amount: int):
     """
-
-    :param pos1:
-    :param pos2:
-    :param pos1_4:
-    :param amount:
+    This function find the appropriate points in image2 between the matching points list
+    and return their [x,y] and their index in matching points list.
+    :param pos1: list of key points in image 1
+    :param pos2: list of key points in image 2 (that match to points in image 1)
+    :param pos1_4: list of 1 or 4 random points from pos1
+    :param amount: 1 or 4 amount of points that we want to find their index and [x,y] that mention upon
     :return:
     """
     if amount == 4:
@@ -30,23 +31,18 @@ def findIndexsAndValuesInImg2(pos1, pos2, pos1_4, amount: int):
         ip4 = None
         for i in range(pos1.shape[0]):
             if pos1[i][0] == pos1_4[0][0] and pos1[i][1] == pos1_4[0][1]:
-                print("in1")
                 p1 = pos2[i]
                 ip1 = i
             elif pos1[i][0] == pos1_4[1][0] and pos1[i][1] == pos1_4[1][1]:
-                print("in2")
                 p2 = pos2[i]
                 ip2 = i
             elif pos1[i][0] == pos1_4[2][0] and pos1[i][1] == pos1_4[2][1]:
-                print("in3")
                 p3 = pos2[i]
                 ip3 = i
             elif pos1[i][0] == pos1_4[3][0] and pos1[i][1] == pos1_4[3][1]:
-                print("in4")
                 p4 = pos2[i]
                 ip4 = i
         real_pos2_val = np.array([p1, p2, p3, p4])
-        print("real_pos2_val = ", real_pos2_val)
         real_pos2_ind = np.array([ip1, ip2, ip3, ip4])
         return real_pos2_val, real_pos2_ind
     elif amount == 1:
@@ -61,12 +57,13 @@ def findIndexsAndValuesInImg2(pos1, pos2, pos1_4, amount: int):
         return real_pos2_val, real_pos2_ind
 
 
-def testTheInliers(inliers, pos1: np.ndarray, pos2: np.ndarray):
+def testTheInliers(H, inliers, pos1: np.ndarray, pos2: np.ndarray):
     """
-
-    :param inliers:
-    :param pos1:
-    :param pos2:
+    This function display the best and maximum inliers in image1 and the result -
+    the matching points, in image2 .
+    :param inliers: list of max inliers index
+    :param pos1: key points array in image1 (part 1 of matching points)
+    :param pos2: key points array in image2 (part 2 of matching points)
     :return:
     """
     t1 = []
@@ -76,6 +73,11 @@ def testTheInliers(inliers, pos1: np.ndarray, pos2: np.ndarray):
         t2.append(pos2[i])
     print("test : t1 = ", np.array(t1))
     print("test : t2 = ", np.array(t2))
+    res = []
+    for i in inliers:
+        res.append(ApplyHomography(np.array([pos1[i]]), H))
+    print("test : pred_t2 = ", res)
+    ans = np.array(t2) - res
 
 
 # =========================================================================================
@@ -132,9 +134,10 @@ def matchFeatures(img1: np.ndarray, img2: np.ndarray):
 
 def ApplyHomography(pos1: np.ndarray, H12: np.ndarray) -> np.ndarray:
     """
-
-    :param pos1:
-    :param H12:
+    The function convert 2D point to 3D homogeneous point and transform the point by homography matrix
+    then return back from 3D point to 2D point .
+    :param pos1: point
+    :param H12: homography matrix
     :return:
     """
     pos2 = None
@@ -259,13 +262,13 @@ def E(H12: np.ndarray, pos1_1: np.ndarray, pos1: np.ndarray, pos2: np.ndarray, i
 
     # find the corresponding point in image 2
     real_pos2_val, real_pos2_ind = findIndexsAndValuesInImg2(pos1, pos2, pos1_1, 1)
-    print("real_pos1 = ", pos1_1)
-    print("pred_pos2 = ", pred_pos2)
-    print("real_pos2 = ", real_pos2_val)
+    # print("real_pos1 = ", pos1_1)
+    # print("pred_pos2 = ", pred_pos2)
+    # print("real_pos2 = ", real_pos2_val)
 
     # Find E = || P' - P ||^2
     sed = (np.linalg.norm(pred_pos2-real_pos2_val))**2
-    print("sed = ", sed)
+    # print("sed = ", sed)
 
     # Determine if E < inlierTol
     if sed < inlierTol:
@@ -276,15 +279,18 @@ def E(H12: np.ndarray, pos1_1: np.ndarray, pos1: np.ndarray, pos2: np.ndarray, i
 
 def ransacHomography(pos1: np.ndarray, pos2: np.ndarray, numIter: int, inlierTol: int) -> (np.ndarray, np.ndarray):
     """
-
-    :param pos1:
-    :param pos2:
-    :param numIter:
-    :param inlierTol:
+     This function fit homography to maximal inliers given point matches
+     using the RANSAC algorithm.
+    :param pos1: nx2 matrices containing n rows of [x,y] coordinates of src matched points.
+    :param pos2: nx2 matrices containing n rows of [x,y] coordinates of dst matched points.
+    :param numIter: number of RANSAC iterations to perform.
+    :param inlierTol: inlier tolerance threshold.
     :return:
     """
     maxInliers = []
     for i in range(numIter):
+
+        # Choose 4 different random points
         r_p1 = random.choice(pos1)
         r_p2 = random.choice([a for a in pos1 if a[0] != r_p1[0] and a[1] != r_p1[1]])
         r_p3 = random.choice([a for a in pos1 if a[0] != r_p1[0] and a[1] != r_p1[1]
@@ -323,6 +329,24 @@ def ransacHomography(pos1: np.ndarray, pos2: np.ndarray, numIter: int, inlierTol
     return H12, maxInliers
 
 
+def displayMatches(im1: np.ndarray, im2: np.ndarray, pos1: np.ndarray, pos2: np.ndarray, inlind):
+    numpy_horizontal = np.hstack((im1, im2))
+    plt.imshow(numpy_horizontal)
+    plt.show()
+    fig = plt.figure()
+    x_shift = im1.shape[1]
+
+    # Mark all key points in red points
+    for i in inlind:
+        x1, y1 = pos1[i][0], pos1[i][1]
+        x2, y2 = pos2[i][0]+x_shift, pos2[i][1]
+        plt.plot(x1, y1, '.y')
+        plt.plot(x2, y2, '.y')
+        # plt.plot([x1, x2], [y1, y2], 'ro-')
+    plt.imshow(numpy_horizontal, cmap='Greys')
+    plt.show()
+
+
 # ============================================================================
 # =================================Main=======================================
 # ============================================================================
@@ -338,4 +362,5 @@ pos1, pos2 = matchFeatures(img1, img2)
 # count = E(H, t_p1, pos1, pos2, 1)
 # print(count)
 h, inliers = ransacHomography(pos1, pos2, 50, 1)
-testTheInliers(inliers, pos1, pos2)  # the result in file - testRANSAC.txt
+testTheInliers(h, inliers, pos1, pos2)  # the result in file - testRANSAC.txt
+# displayMatches(img1, img2, pos1, pos2, inliers)
