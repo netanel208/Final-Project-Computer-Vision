@@ -126,7 +126,7 @@ def matchFeatures(img1: np.ndarray, img2: np.ndarray):
     #     plt.show()
 
     # Display matches
-    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches[:166], None, flags=2)
+    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches[:], None, flags=2)
     plt.imshow(img3)
     plt.show()
 
@@ -331,36 +331,77 @@ def ransacHomography(pos1: np.ndarray, pos2: np.ndarray, numIter: int, inlierTol
 
 
 def displayMatches(im1: np.ndarray, im2: np.ndarray, pos1: np.ndarray, pos2: np.ndarray, inlind):
-    numpy_horizontal = np.hstack((im1, im2))
-    plt.imshow(numpy_horizontal)
-    plt.show()
-    fig = plt.figure()
-    x_shift = im1.shape[1]
-
-    # ================Other way to solution=================
-    # # Mark all key points in red points
-    # for i in inlind:
-    #     x1, y1 = pos1[i][0], pos1[i][1]
-    #     x2, y2 = pos2[i][0]+x_shift, pos2[i][1]
-    #     plt.plot(x1, y1, '.y')
-    #     plt.plot(x2, y2, '.y')
-    #     plt.plot([x1, x2], [y1, y2], 'ro-')
-    # plt.imshow(numpy_horizontal, cmap='Greys')
+    # numpy_horizontal = np.hstack((im1, im2))
+    # plt.imshow(numpy_horizontal)
     # plt.show()
-    # ======================================================
+    # fig = plt.figure()
+    # x_shift = im1.shape[1]
+    #
+    # # ================Other way to solution=================
+    # # # Mark all key points in red points
+    # # for i in inlind:
+    # #     x1, y1 = pos1[i][0], pos1[i][1]
+    # #     x2, y2 = pos2[i][0]+x_shift, pos2[i][1]
+    # #     plt.plot(x1, y1, '.y')
+    # #     plt.plot(x2, y2, '.y')
+    # #     plt.plot([x1, x2], [y1, y2], 'ro-')
+    # # plt.imshow(numpy_horizontal, cmap='Greys')
+    # # plt.show()
+    # # ======================================================
+    #
+    # # Mark all key points in red points
+    # for i in pos1:
+    #     x1, y1 = i[0], i[1]
+    #     cv2.circle(numpy_horizontal, (int(x1), int(y1)), 4, (255, 0, 0), 1)
+    # for j in pos2:
+    #     x2, y2 = j[0] + x_shift, j[1]
+    #     cv2.circle(numpy_horizontal, (int(x2), int(y2)), 4, (255, 0, 0), 1)
+    # cv2.imshow('img', numpy_horizontal)
+    # cv2.waitKey(0)
+
+    # Create a new output image that concatenates the two images together
+    rows1 = im1.shape[0]
+    cols1 = im1.shape[1]
+    rows2 = im2.shape[0]
+    cols2 = im2.shape[1]
+
+    out = np.zeros((max([rows1, rows2]), cols1 + cols2, 3), dtype='uint8')
+
+    # Place the first image to the left
+    out[:rows1, :cols1, :] = np.dstack([im1, im1, im1])
+    # Place the next image to the right of it
+    out[:rows2, cols1:cols1 + cols2, :] = np.dstack([im2, im2, im2])
 
     # Mark all key points in red points
+    for i in pos1:
+        x1, y1 = i[0], i[1]
+        cv2.circle(out, (int(x1), int(y1)), 4, (0, 0, 255), 1)
+    for j in pos2:
+        x2, y2 = j[0] + cols1, j[1]
+        cv2.circle(out, (int(x2), int(y2)), 4, (0, 0, 255), 1)
 
+    # Mark all lines between matching points in blue color
+    t = None
+    for i in range(0, pos1.shape[0]):
+        if i not in inlind:
+            x1, y1 = pos1[i][0], pos1[i][1]
+            x2, y2 = pos2[i][0] + cols1, pos2[i][1]
+            cv2.line(out, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 1)
 
-
-
+    # Mark all lines between inliers matching points in yellow line
+    for i in inlind:
+        x1, y1 = pos1[i][0], pos1[i][1]
+        x2, y2 = pos2[i][0]+cols1, pos2[i][1]
+        cv2.line(out, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 1)
+    cv2.imshow('img', out)
+    cv2.waitKey(0)
 
 
 # ============================================================================
 # =================================Main=======================================
 # ============================================================================
-img1 = cv2.imread('backyard1.jpg')
-img2 = cv2.imread('backyard2.jpg')
+img1 = cv2.imread('oxford1.jpg')
+img2 = cv2.imread('oxford2.jpg')
 img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
 img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 pos1, pos2 = matchFeatures(img1, img2)
@@ -370,6 +411,6 @@ pos1, pos2 = matchFeatures(img1, img2)
 # H = leastSquareHomograpy(pos1, pos2)
 # count = E(H, t_p1, pos1, pos2, 1)
 # print(count)
-h, inliers = ransacHomography(pos1, pos2, 150, 1)
+h, inliers = ransacHomography(pos1, pos2, 170, 5)
 testTheInliers(h, inliers, pos1, pos2)  # the result in file - testRANSAC.txt
 displayMatches(img1, img2, pos1, pos2, inliers)
