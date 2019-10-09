@@ -81,6 +81,47 @@ def testTheInliers(H, inliers, pos1: np.ndarray, pos2: np.ndarray):
     ans = np.array(t2) - res
 
 
+def testTheHtot(Htot, Hpair):
+    """
+    Hpair should contain 3 homography matrices
+    :param Htot:
+    :param Hpair:
+    :return:
+    """
+    if len(hpair) == 3:
+        t = []
+        H0_1 = Hpair[0]
+        H1_2 = Hpair[1]
+        H2_3 = Hpair[2]
+        # i < 2
+        H0_2 = np.dot(H1_2, H0_1)
+        H1_2 = H1_2
+        # i = 2
+        H2_2 = np.identity(3)
+        # i > 2
+        H3_2 = np.linalg.inv(H2_3)
+        t.append(H0_2/H0_2[2][2])
+        t.append(H1_2/H1_2[2][2])
+        t.append(H2_2)
+        t.append(H3_2/H3_2[2][2])
+        print("test htot : ", t)
+
+
+def prepareHpair(setOfImage: list):
+    res = []
+    for i in range(len(setOfImage)-1):
+        im1 = setOfImage[i]
+        im2 = setOfImage[i+1]
+        im1 = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
+        im2 = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
+        pos1, pos2 = matchFeatures(im1, im2)
+        h, inliers = ransacHomography(pos1, pos2, 170, 5)
+        res.append(h)
+        displayMatches(im1, im2, pos1, pos2, inliers)
+    print("Hpair = ", res)
+    return res
+
+
 # =========================================================================================
 # =====================================Main functions======================================
 # =========================================================================================
@@ -397,20 +438,71 @@ def displayMatches(im1: np.ndarray, im2: np.ndarray, pos1: np.ndarray, pos2: np.
     cv2.waitKey(0)
 
 
+def accumulateHomographies(Hpair, m: int):
+    """
+    Start calculate from the middle(m) :
+    when i<m -
+    Hi,m = ((((Hm-1*Hm-2)*Hm-3)*Hm-4)...)
+    when i>m -
+    Hi,m = (((((Hm^-1)*(Hm+1^-1))*(Hm+2^-1))*(Hm+3^-1))...)
+    :param Hpair:
+    :param m:
+    :return:
+    """
+    Htot = []
+    if len(Hpair) > 2:
+        for i in range(0, len(Hpair)+1):
+            if i < m:
+                j = m-2
+                H_i_m = Hpair[m-1]
+                while j >= i:
+                    print("in", j)
+                    H_i_m = np.dot(H_i_m, Hpair[j])
+                    j -= 1
+                Htot.append(np.array(H_i_m)/H_i_m[2][2])
+            elif i > m:
+                j = m+1
+                H_i_m = np.linalg.inv(Hpair[m])
+                while i > j:
+                    H_i_m = np.dot(H_i_m, np.linalg.inv(Hpair[j]))
+                    j += 1
+                Htot.append(np.array(H_i_m)/H_i_m[2][2])
+            elif i == m:
+                Htot.append(np.identity(3))
+        print("Htot = ", Htot)
+    elif len(Hpair) == 2:
+        t1 = np.dot(Hpair[1], Hpair[0])
+        t2 = np.identity(3)
+        t3 = np.dot(np.linalg.inv(Hpair[0]), np.linalg.inv(Hpair[1]))
+        Htot.append(t1/t1[2][2])
+        Htot.append(t2)
+        Htot.append(t3/t3[2][2])
+        print("Htot = ", Htot)
+    return Htot
+
+
+def renderPanorama(im, H):
+
+
 # ============================================================================
 # =================================Main=======================================
 # ============================================================================
-img1 = cv2.imread('oxford1.jpg')
-img2 = cv2.imread('oxford2.jpg')
-img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-pos1, pos2 = matchFeatures(img1, img2)
-# t_p1 = np.array([pos1[0], pos1[1], pos1[2], pos1[3], pos1[4], pos1[5], pos1[6]])
-# t_p2 = np.array([pos2[0], pos2[1], pos2[2], pos2[3], pos2[4], pos2[5], pos2[6]])
-# H = leastSquareHomograpy(t_p1, t_p2)
-# H = leastSquareHomograpy(pos1, pos2)
-# count = E(H, t_p1, pos1, pos2, 1)
-# print(count)
-h, inliers = ransacHomography(pos1, pos2, 170, 5)
-testTheInliers(h, inliers, pos1, pos2)  # the result in file - testRANSAC.txt
-displayMatches(img1, img2, pos1, pos2, inliers)
+# img1 = cv2.imread('oxford1.jpg')
+# img2 = cv2.imread('oxford2.jpg')
+# img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+# img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+# pos1, pos2 = matchFeatures(img1, img2)
+# # t_p1 = np.array([pos1[0], pos1[1], pos1[2], pos1[3], pos1[4], pos1[5], pos1[6]])
+# # t_p2 = np.array([pos2[0], pos2[1], pos2[2], pos2[3], pos2[4], pos2[5], pos2[6]])
+# # H = leastSquareHomograpy(t_p1, t_p2)
+# # H = leastSquareHomograpy(pos1, pos2)
+# # count = E(H, t_p1, pos1, pos2, 1)
+# # print(count)
+# h, inliers = ransacHomography(pos1, pos2, 170, 5)
+# testTheInliers(h, inliers, pos1, pos2)  # the result in file - testRANSAC.txt
+# displayMatches(img1, img2, pos1, pos2, inliers)
+# hpair = prepareHpair([cv2.imread('backyard1.jpg'), cv2.imread('backyard2.jpg'), cv2.imread('backyard3.jpg')])
+hpair = prepareHpair([cv2.imread('office1.jpg'), cv2.imread('office2.jpg'), cv2.imread('office3.jpg'),
+                      cv2.imread('office4.jpg')])
+htot = accumulateHomographies(hpair, 2)
+testTheHtot(htot, hpair)
