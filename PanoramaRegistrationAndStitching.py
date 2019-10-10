@@ -482,6 +482,39 @@ def accumulateHomographies(Hpair, m: int):
 
 
 def renderPanorama(im, H):
+    """
+
+    :param im: array or dict of n grayscale images.
+    :param H:  array or dict array of n 3x3 homography matrices transforming the ith image % coordinates to the panorama
+     image coordinates.
+    :return:
+    """
+    #compute corners
+    corners = []
+    for i in range(0, len(im)):
+        icorner1 = [0, 0]
+        icorner2 = [0, im[i].shape[0]-1]
+        icorner3 = [im[i].shape[1]-1, 0]
+        icorner4 = [im[i].shape[1]-1, im[i].shape[0]-1]
+        print("shape = ", im[i].shape)
+        print("icorner1 = ", icorner1)
+        print("icorner2 = ", icorner2)
+        print("icorner3 = ", icorner3)
+        print("icorner4 = ", icorner4)
+        # cv2.circle(img, (icorner1[0], icorner1[1]), 8, (0, 0, 255), 1)
+        # cv2.circle(img, (icorner2[0], icorner2[1]), 8, (0, 0, 255), 1)
+        # cv2.circle(img, (icorner3[0], icorner3[1]), 8, (0, 0, 255), 1)
+        # cv2.circle(img, (icorner4[0], icorner4[1]), 8, (0, 0, 255), 1)
+        # cv2.imshow('fig', img)
+        # cv2.waitKey(0)
+        pcorner1 = ApplyHomography(np.array([icorner1]), H[i])
+        pcorner2 = ApplyHomography(np.array([icorner2]), H[i])
+        pcorner3 = ApplyHomography(np.array([icorner3]), H[i])
+        pcorner4 = ApplyHomography(np.array([icorner4]), H[i])
+        print("pcorner1 = ", pcorner1)
+        print("pcorner2 = ", pcorner2)
+        print("pcorner3 = ", pcorner3)
+        print("pcorner4 = ", pcorner4)
 
 
 # ============================================================================
@@ -506,3 +539,12 @@ hpair = prepareHpair([cv2.imread('office1.jpg'), cv2.imread('office2.jpg'), cv2.
                       cv2.imread('office4.jpg')])
 htot = accumulateHomographies(hpair, 2)
 testTheHtot(htot, hpair)
+img1 = cv2.imread('office1.jpg')
+img2 = cv2.imread('office2.jpg')
+img3 = cv2.imread('office3.jpg')
+img4 = cv2.imread('office4.jpg')
+img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+img3 = cv2.cvtColor(img3, cv2.COLOR_BGR2GRAY)
+img4 = cv2.cvtColor(img4, cv2.COLOR_BGR2GRAY)
+renderPanorama([img1, img2, img3, img4], htot)
